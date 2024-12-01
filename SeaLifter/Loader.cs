@@ -186,7 +186,7 @@ namespace Loader
         }
     }
 
-    [BepInPlugin("SPML", "SeapowerModLoader", "1.0")]
+    [BepInPlugin("SL", "SeaLifter", "1.0")]
     public class Plugin : BaseUnityPlugin
     {
 
@@ -199,7 +199,7 @@ namespace Loader
             int ver = 4;
             Logger.LogInfo($"Plugin is loaded! Ver 0.0.0.{ver}");
             Debug.LogWarning($"Plugin is loaded! Ver 0.0.0.{ver}");
-            var harmony = new Harmony("neb.lib.harmony.product");
+            var harmony = new Harmony("sp.sl.lib.harmony.product");
             harmony.PatchAll();
 
 
