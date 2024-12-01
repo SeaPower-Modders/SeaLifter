@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Loader": {
+      "commandName": "Project"
+    },
+    "Seapower": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sea Power\\Sea Power.exe"
+    }
+  }
+}
