@@ -202,38 +202,6 @@ namespace Loader
             var harmony = new Harmony("neb.lib.harmony.product");
             harmony.PatchAll();
 
-            return;
-
-            foreach (var dir in FileManager.Instance.Directories.ToList().ConvertAll(dir => dir.DirectoryInfo))
-            {
-                string possiblepath = Path.Combine(dir.FullName);
-                Debug.LogWarning($"loading dll {possiblepath}"); // For example, just print them
-
-                string[] dllFiles = Directory.GetFiles(possiblepath, "*.dll", SearchOption.AllDirectories);
-
-                // Process the found .dll files
-                foreach (string asmPath in dllFiles)
-                {
-                    // Your logic to handle the found DLLs
-                    Debug.LogWarning($"loaded dll {asmPath}"); // For example, just print them
-                    List<Assembly> _loadedAssemblies = new List<Assembly>();
-                    try
-                    {
-                        Assembly loaded = Assembly.LoadFile(asmPath);
-                        Debug.Log("Loaded assembly " + loaded.FullName);
-                        _loadedAssemblies.Add(loaded);
-                        Type epType = (from x in loaded.GetTypes()
-                                       where x.GetInterfaces().Contains(typeof(IModInterface))
-                                       select x).FirstOrDefault();
-                        IModInterface ep2 = (IModInterface)Activator.CreateInstance(epType);
-                        ep2.TriggerEntryPoint();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError("Error loading assembly at path " + asmPath + ": " + ex);
-                    }
-                }
-            }
 
 
 
@@ -241,10 +209,6 @@ namespace Loader
 
     }
 
-    public interface IModInterface
-    {
-        public void TriggerEntryPoint();
-    }
 
     public static class IniConfig 
     {
