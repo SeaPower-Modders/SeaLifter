@@ -196,7 +196,7 @@ namespace Loader
             IniConfig.Load();
 
             // Plugin startup logic
-            int ver = 4;
+            int ver = 7;
             Logger.LogInfo($"Plugin is loaded! Ver 0.0.0.{ver}");
             Debug.LogWarning($"Plugin is loaded! Ver 0.0.0.{ver}");
             var harmony = new Harmony("sp.sl.lib.harmony.product");
@@ -597,7 +597,7 @@ namespace Loader
             resourcePath.SaveProtextedTexture(basetex, dump: false);//Logged
 
 
-            resourcePath.Log($"Creating red template texture");
+            resourcePath.Log($"creating red template texture");
 
             using (Bitmap bmp = new Bitmap(32, 32))
             {
@@ -615,7 +615,7 @@ namespace Loader
 
                     for (int y = 0; y < bmp.Height; y++)
                     {
-                        bmp.SetPixel(x, y, GetRandomColor());//System.Drawing.Color.Red
+                        bmp.SetPixel(x, y, System.Drawing.Color.Red);//System.Drawing.Color.Red
                     }
                 }
                 bmp.Save(resourcePath.FullPath, ImageFormat.Png);
