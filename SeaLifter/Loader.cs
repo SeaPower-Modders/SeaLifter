@@ -145,22 +145,32 @@ namespace Loader
             this.Log($"Creating Directory");
             Directory.CreateDirectory(FullDirectory);
         }
-        public bool InValidPath(string ext)
+        public bool ValidNewPath(string ext = "")
         {
             if (Exists)
-                return true;
+                return false;
             if (!FullPath.Contains(ext))
                 return true;
             EnsureCreated();
             this.Log($" Creating {Extension}");
             return false;
+            EnsureCreated();
+            this.Log($"Safe to write to {Extension}");
+            return true;
         }
         public StreamWriter CreateStreamWriter(string extension)
         {
-            if (this.InValidPath(extension))
+            if (!ValidNewPath(extension))
                 return null;
             this.Log($"Creating SW");
             return new StreamWriter(FullPath);
+        }
+        public bool CheckFileType(List<string> extension, bool log = true)
+        {
+            foreach (string ext in extension)
+                if (CheckFileType(ext, log))
+                    return true;
+            return false;
         }
 
         public bool CheckFileType(string extension, bool log = true)
@@ -187,11 +197,14 @@ namespace Loader
 
             if (typeof(T) == typeof(Texture2D) || typeof(T) == typeof(Texture))
             {
-                if (CheckFileType(".png"))//Logged
+                if (CheckFileType([".png", ".jpg", ".exr"]))//Logged
                 {
-                    this.CreateTextureTemplate();//Logged
-                    return this.LoadPng() as T;//Logged
+       
+                    this.CreateTextureTemplate(this.Extension);//Logged
+                    return this.LoadImage() as T;//Logged
                 }
+     
+ 
             }
             else if (typeof(T) == typeof(Material) && CheckFileType(".ini"))//Logged
             {
@@ -214,8 +227,10 @@ namespace Loader
             T resource = Resources.Load<T>(Raw);
             if(resource)
                 this.Log($"Missing File, Loading From Internal Resources");
-            else
+            else if(!Raw.Contains("_d"))
+            {
                 this.Log($"Trying to load as {typeof(T).Name} from internal resources failed");
+            }
             return Resources.Load<T>(Raw);
         }
 
@@ -270,6 +285,7 @@ namespace Loader
 
         public static string DefaultFolder = "user";
         public static string DumpFolder = "texturedump";
+        public static string DumpFormat = "png";
         public static bool DumpTextures = true;
         public static bool DumpTexturesOpaque = true;
         public static bool LogInternalResources = false;
@@ -383,17 +399,17 @@ namespace Loader
             if (dump && !IniConfig.DumpTextures)
                 return;
             if(dump)
-                resourcePath = new ResourcePath( resourcePath + ".png", IniConfig.DumpFolder, parent: resourcePath);
+                resourcePath = new ResourcePath( resourcePath + "." + IniConfig.DumpFormat, IniConfig.DumpFolder, parent: resourcePath);
 
 
             if (resourcePath.Exists || tex == null)
                 return;
             //Common.Log("Texture Already Loaded" + texturename);
-            byte[] pngData;
+            byte[] imageBytes;
             if (tex is Texture2D texture2D)
             {
                 //Common.Log("Copying Texture" + texturename + texture2D.format);
-                resourcePath.Log($"creating texture from {tex.name}");
+                resourcePath.Log($"creating texture from {tex.name} as {IniConfig.DumpFormat}");
 
                 RenderTexture renderTexture = new RenderTexture(texture2D.width, texture2D.height, 24);
                 Graphics.Blit(texture2D, renderTexture);
@@ -415,11 +431,33 @@ namespace Loader
 
                 newTexture.Apply();
                 RenderTexture.active = null;
-                pngData = newTexture.EncodeToPNG();
+                switch (IniConfig.DumpFormat)
+                {
+                    case "png":
+                        // Handle PNG format
+                        imageBytes = newTexture.EncodeToPNG();
+                        break;
+                    case "jpg":
+                    case "jpeg":
+                        imageBytes = newTexture.EncodeToJPG();
+                        break;
+                    case "exr":
+                        imageBytes = newTexture.EncodeToEXR();
+                        break;
+                    case "tga":
+                        imageBytes = newTexture.EncodeToTGA();
+                        break;
+
+                    default:
+                        // Handle unsupported formats
+                        
+                        resourcePath.Log("Unsupported image format");
+                        return ;
+                }
 
                 resourcePath.EnsureDirectoryExists();
-                // Save the PNG byte array to the file
-                File.WriteAllBytes(resourcePath.FullPath, pngData);
+                // Save the byte array to the file
+                File.WriteAllBytes(resourcePath.FullPath, imageBytes);
             }
 
 
@@ -515,20 +553,65 @@ namespace Loader
             resourcePath.Log($"{obj.gameObject.GetComponentInChildren<MeshRenderer>().gameObject.name} rend name");
             return obj;
         }
-        public static Texture2D LoadPng(this ResourcePath resourcePath)
-        {
-            resourcePath.Log($"loading as png");
-            Texture2D tex = new Texture2D(2, 2);
+        private static Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
 
-            if (!ImageConversion.LoadImage(tex, File.ReadAllBytes(resourcePath.FullPath)))
+        public static Texture2D LoadImage(this ResourcePath resourcePath)
+        {
+
+            if (!File.Exists(resourcePath.FullPath))
             {
-                Common.Error($"{resourcePath} bad/Missing png File");
+                resourcePath.Log($"Failed to find image");
                 return null;
             }
             
 
+            resourcePath.Log($"loading image file");
+
+
+            byte[] fileBytes = File.ReadAllBytes(resourcePath.FullPath);
+
+            string fileHash = GetFileHash(fileBytes);
+            if (textureCache.ContainsKey(fileHash))
+            {
+                resourcePath.Log($"Texture found in cache with hash {fileHash}");
+                return textureCache[fileHash]; // Return the cached texture
+            }
+
+            Texture2D tex;
+            if (resourcePath.Extension == ".tga")
+            {
+                resourcePath.Log($"loading tga image");
+
+                tex = TGALoader.Load(resourcePath.FullPath);
+
+            }
+            else
+            {
+                tex = new Texture2D(2, 2);
+    
+                if (!tex.LoadImage( fileBytes))
+                {
+                    Common.Error($"{resourcePath} bad/Missing image File");
+                    return null;
+                }
+            }
+            
+
+
+
+            resourcePath.Log($"TextureFormat: {tex.format} Texture Size: {tex.texelSize} Filter Mode: {tex.filterMode}");
+            textureCache[fileHash] = tex;
+
             tex.Apply();
             return tex;
+        }
+        private static string GetFileHash(byte[] fileBytes)
+        {
+            using (var md5 = MD5.Create())
+            {
+                byte[] hashBytes = md5.ComputeHash(fileBytes);
+                return Convert.ToBase64String(hashBytes).ToLowerInvariant();
+            }
         }
 
 
@@ -654,12 +737,17 @@ namespace Loader
             writer.Close();
         }
 
-        public static void CreateTextureTemplate(this ResourcePath resourcePath)
+        public static void CreateTextureTemplate(this ResourcePath resourcePath, string extension)
         {
-            if (resourcePath.InValidPath(".png"))//Logged
+            if (!resourcePath.ValidNewPath(extension))//Logged
                 return;
-            Texture basetex = new ResourcePath(resourcePath.Raw.Replace(".png", "")).LoadResource<Texture>();//LOGGED
+            Texture basetex = new ResourcePath(resourcePath.Raw.Replace(extension, "")).LoadResource<Texture>();//LOGGED
+            if(basetex != null)
+            {
+                resourcePath.Log($"creating template using existing textures");
             resourcePath.SaveProtextedTexture(basetex, dump: false);//Logged
+
+            }
 
 
             resourcePath.Log($"creating red template texture");
@@ -683,7 +771,13 @@ namespace Loader
                         bmp.SetPixel(x, y, System.Drawing.Color.Red);//System.Drawing.Color.Red
                     }
                 }
+                if(extension == ".png")
+                {
+                    resourcePath.Log($"saving png");
+
                 bmp.Save(resourcePath.FullPath, ImageFormat.Png);
+
+                }
             }
         }
     }
