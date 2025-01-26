@@ -1,19 +1,20 @@
-﻿using BepInEx;
+﻿using AnchorChain;
 using Dummiesman;
 using HarmonyLib;
 
 using SeaPower;
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Reflection;
+using System.Security.Cryptography;
 using UnityEngine;
-using static SeapowerUI.ViewModels.MissionDebriefViewModel;
+using static Noesis.Shader;
 using Application = UnityEngine.Application;
 using Color = UnityEngine.Color;
 using Graphics = UnityEngine.Graphics;
 using Random = System.Random;
 using Texture = UnityEngine.Texture;
-
+#nullable enable
 namespace Loader
 {
     [HarmonyPatch(typeof(ObjectBaseLoader))] // Replace with the actual class that contains the method
@@ -239,17 +240,24 @@ namespace Loader
     public class Plugin : BaseUnityPlugin
     {
 
-        private void Awake()
-        {
 
+    [ACPlugin("sp.sl.lib.chainloader.product", "Chainloader", "0.0.0.9")]
+    public class Plugin2 : MonoBehaviour, IAnchorChainMod
+        {
+        public static string HarmonyName => "sp.sl.lib.harmony.product";
+
+        void IAnchorChainMod.TriggerEntryPoint()
+        {
             IniConfig.Load();
 
             // Plugin startup logic
-            int ver = 7;
-            Logger.LogInfo($"Plugin is loaded! Ver 0.0.0.{ver}");
+            int ver = 11;
+
             Debug.LogWarning($"Plugin is loaded! Ver 0.0.0.{ver}");
-            var harmony = new Harmony("sp.sl.lib.harmony.product");
+            var harmony = new Harmony(HarmonyName);
             harmony.PatchAll();
+        }
+    }
 
 
 
