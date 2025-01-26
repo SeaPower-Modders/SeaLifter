@@ -340,6 +340,17 @@ namespace Loader
             }
         }
 
+        public static void LogTransform(Transform transform, int depth = 0)
+        {
+            string indent = new string(' ', depth * 4);
+            Common.Log($"{indent}{transform.name}");
+
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                LogTransform(transform.GetChild(i), depth + 1);
+            }
+        }
+
 
         public static void Log(object obj)
         {
