@@ -546,11 +546,15 @@ namespace Loader
 
             GameObject obj = new OBJLoader().Load(resourcePath.FullPath);
             if (IniConfig.MeshDebugMode == false)
+            {
                 obj.transform.position = Vector3.up * -10000;
+                obj.transform.localScale = Vector3.one / 10000;
+            }
             Common.LogGameObject(obj, resourcePath.FullPath + ".log");
 
-            resourcePath.Log($"{obj.name} go name");
-            resourcePath.Log($"{obj.gameObject.GetComponentInChildren<MeshRenderer>().gameObject.name} rend name");
+            resourcePath.Log($"root gameobject {obj.name}");
+            foreach(var mesh in obj.gameObject.GetComponentsInChildren<MeshRenderer>())
+                resourcePath.Log($"mesh is named {mesh.gameObject.name}");
             return obj;
         }
         private static Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
@@ -614,7 +618,6 @@ namespace Loader
             }
         }
 
-
         public static Material LoadMatIni(this ResourcePath resourcePath)
         {
             resourcePath.Log($"Loading as ini");
@@ -623,30 +626,37 @@ namespace Loader
             //Common.Log($"{path} Has BaseMaterial");
             string basefolder = iniHandler.readValue("BaseMaterial", "ResourcesFolder", "weapons/usn_mk-82/");
             string basemat = iniHandler.readValue("BaseMaterial", "ResourcesMaterial", "usn_mk-82_mat");
-            Material mat = Singleton<ResourceLoader>.Instance.getMaterialResource(basefolder + basemat);
-            if (mat != null)
-
-                if (!iniHandler.doesSectionExist("Textures"))
+            string shader = iniHandler.readValue("BaseMaterial", "Shader", "");
+            Material mat = new(Singleton<ResourceLoader>.Instance.getMaterialResource(basefolder + basemat)) ;
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find(shader));
+                resourcePath.Log($"new material using shader: {shader}");
+            }
+            else
+            {
+                resourcePath.Log($"copying data from material {mat.name}");
+                if (shader != "")
                 {
-                    Common.Error("Material has no Textures");
-                    return null;
+                    resourcePath.Log($"replacing shader with: {shader}");
+                    mat.shader = Shader.Find(shader);
+
+                }
+
                 }
 
 
             string folder = iniHandler.readValue("Textures", "ResourcesFolder", "textures/");
-            resourcePath.Log($"Loading mat textures from: {folder}");
+            resourcePath.Log($"loading textures from: {folder}");
 
-            void SetTextureFromIni(IniHandler handler, Material mat, string settingname, string propertyname)
+            void SetTextureFromIni(IniHandler handler, Material mat, string propertyname, string settingname = "")
             {
+                if (settingname == "")
+                    settingname = propertyname;
+                if (!handler.doesKeyExist("Textures", settingname)) return;
                 string texturepath = handler.readValue("Textures", settingname, "");
 
-                if (texturepath == "")
-                {
-                    resourcePath.Log($"Propery {propertyname} using default texture");
-                    return;
-                }
-                else
-                    resourcePath.Log($"Loading {settingname} from: {texturepath}");
+                resourcePath.Log($"loading {settingname} from: {texturepath}");
 
                 texturepath = folder + texturepath;
                 Texture tex = Singleton<ResourceLoader>.Instance.getTextureResource(texturepath);
@@ -656,14 +666,66 @@ namespace Loader
                     resourcePath.Error($"null texture at {texturepath}");
 
             }
+            void SetIntFromIni(IniHandler handler, Material mat, string propertyname)
+            {
+                if (!handler.doesKeyExist("Integers", propertyname)) return;
+                int value = handler.readValue("Integers", propertyname, int.MaxValue);
+                resourcePath.Log($"loading {propertyname} value: {value}");
+                mat.SetInteger(propertyname, value);
+
+            }
+            void SetFloatFromIni(IniHandler handler, Material mat, string propertyname)
+            {
+                if (!handler.doesKeyExist("Floats", propertyname)) return;
+                float value = handler.readValue("Floats", propertyname, float.NaN);
+                resourcePath.Log($"loading {propertyname} value: {value}");
+                mat.SetFloat(propertyname, value);
+
+            }
+            void SetColorFromIni(IniHandler handler, Material mat, string propertyname)
+            {
+                if (!handler.doesKeyExist("Colors", propertyname)) return;
+                Vector4 value = handler.readValue("Colors", propertyname, Vector4.positiveInfinity);
+                resourcePath.Log($"loading {propertyname} value: {value}");
+                mat.SetColor(propertyname, value);
 
 
-            SetTextureFromIni(iniHandler, mat, "DetailAlbedoMap", "_MainTex");
-            SetTextureFromIni(iniHandler, mat, "DetailMask", "_SpecTex");
-            SetTextureFromIni(iniHandler, mat, "DetailNormalMap", "_BumpMap");
+            }
+            foreach (string property in new[] { "_MainTex", "_SpecTex", "_BumpMap" })
+            {
+                SetTextureFromIni(iniHandler, mat, property);
+            }
+            SetTextureFromIni(iniHandler, mat, "_MainTex", "DetailAlbedoMap");
+            SetTextureFromIni(iniHandler, mat, "_SpecTex", "DetailMask");
+            SetTextureFromIni(iniHandler, mat, "_BumpMap", "DetailNormalMap");
+
+            foreach (string property in  mat.GetTexturePropertyNames())
+            {
+
+                SetTextureFromIni(iniHandler, mat, property);
+            }
+            foreach (string property in mat.GetPropertyNames(MaterialPropertyType.Float))
+            {
+                SetFloatFromIni(iniHandler, mat, property);
+            }
+            foreach (string property in mat.GetPropertyNames(MaterialPropertyType.Int))
+            {
+                SetIntFromIni(iniHandler, mat, property);
+            }
+            foreach (string property in mat.GetPropertyNames(MaterialPropertyType.Vector))
+            {
+                SetColorFromIni(iniHandler, mat, property);
+                //resourcePath.Log($"Possible vector Property {property} value: {mat.GetVector(property)}");
+            }
+            foreach (string property in new[] { "_Color", "_EmissionColor", "_GlowColor", "_SpecColor" })
+            {
+                SetColorFromIni(iniHandler, mat, property);
+
+            }
+
 
             string DetailNormalMap = ""; // iniHandler.readValue("Textures", "DetailNormalMap", "");
-            if (DetailNormalMap.Contains(".png"))
+            if (DetailNormalMap != "")//has filepath
             {
                 Texture NormalMap = Singleton<ResourceLoader>.Instance.getTextureResource(folder + DetailNormalMap);
                 NormalMap = NormalMap.ConvertToTexture2D().NormalMap();
@@ -689,10 +751,9 @@ namespace Loader
             resourcePath.Log($"Creating in folder {texturefolder}");
             writer.WriteLine("[Textures]");
             writer.WriteLine($"ResourcesFolder={texturefolder}\n");
-            writer.WriteLine("DetailAlbedoMap=DetailAlbedoMap.png");
-            writer.WriteLine("DetailMask=DetailMask.png");
-            writer.WriteLine("DetailNormalMap=DetailNormalMap.png");
-
+            writer.WriteLine("_MainTex=DetailAlbedoMap.png");
+            writer.WriteLine("_SpecTex=DetailMask.png");
+            writer.WriteLine("_BumpMap=DetailNormalMap.png");
             writer.Close();
         }
 
