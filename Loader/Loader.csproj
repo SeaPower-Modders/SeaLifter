@@ -3,6 +3,8 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
+	<BaseOutputPath>C:\Program Files (x86)\Steam\steamapps\common\Sea Power\BepInEx\plugins\loader</BaseOutputPath>
+
   </PropertyGroup>
 
 </Project>

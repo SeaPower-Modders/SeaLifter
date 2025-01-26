@@ -4,13 +4,21 @@
     <TargetFramework>net481</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <BaseOutputPath>C:\Program Files (x86)\Steam\steamapps\common\Sea Power\BepInEx\plugins</BaseOutputPath>
+    <BaseOutputPath>C:\Program Files (x86)\Steam\steamapps\common\Sea Power\Sea Power_Data\StreamingAssets\sealifter</BaseOutputPath>
     <LangVersion>12.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>..\Dll\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AnchorChain">
+      <HintPath>..\Dll\AnchorChain.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AnchorChain.Preloader">
+      <HintPath>..\Dll\AnchorChain.Preloader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="BepInEx">
