@@ -236,9 +236,6 @@ namespace Loader
         }
     }
 
-    [BepInPlugin("SL", "SeaLifter", "1.0")]
-    public class Plugin : BaseUnityPlugin
-    {
 
 
     [ACPlugin("sp.sl.lib.chainloader.product", "Chainloader", "0.0.0.9")]
