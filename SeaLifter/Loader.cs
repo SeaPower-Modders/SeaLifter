@@ -150,9 +150,6 @@ namespace Loader
             if (Exists)
                 return false;
             if (!FullPath.Contains(ext))
-                return true;
-            EnsureCreated();
-            this.Log($" Creating {Extension}");
             return false;
             EnsureCreated();
             this.Log($"Safe to write to {Extension}");
@@ -273,10 +270,6 @@ namespace Loader
 
 
 
-
-        }
-
-    }
 
 
     public static class IniConfig 
@@ -510,7 +503,7 @@ namespace Loader
         {
 
             ResourcePath resourcePath = new ResourcePath(resourceName, internalresouce: __result != null);
-            __result = resourcePath.LoadResource<GameObject>(__result);//Logged
+            __result = resourcePath.LoadResource(__result);//Logged
 
         }
     }
@@ -522,7 +515,7 @@ namespace Loader
         {
             ResourcePath resourcePath = new ResourcePath(resourceName, internalresouce: __result != null);
             resourcePath.DumpMaterial(__result);//Logged
-            __result = resourcePath.LoadResource<Material>(__result);//Logged
+            __result = resourcePath.LoadResource(__result);//Logged
         }
 
     }
@@ -533,7 +526,7 @@ namespace Loader
         {
             ResourcePath resourcePath = new ResourcePath(resourceName, internalresouce: __result != null);
             resourcePath.SaveProtextedTexture(__result);//Logged
-            __result = resourcePath.LoadResource<Texture>(__result);//Logged;
+            __result = resourcePath.LoadResource(__result);//Logged;
         }
 
     }
