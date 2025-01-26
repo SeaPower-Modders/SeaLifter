@@ -16,6 +16,55 @@ using Texture = UnityEngine.Texture;
 
 namespace Loader
 {
+    [HarmonyPatch(typeof(ObjectBaseLoader))] // Replace with the actual class that contains the method
+    [HarmonyPatch("createObjectPartObject")]
+    public class CreateObjectPartObjectPatch
+    {
+        public static void Postfix(ObjectBaseParameters obp, string objectIniFolder, string subModelName, bool isVisible, bool castShadows, bool hideWithActiveDamageModel,
+                                   string alternativeMeshResourcesFolder, string alternativeMaterialResourcesFolder, string rootMeshName, string meshName,
+                                   string matName, string materialTextureDiffuse, string materialTextureSpecular, string materialTextureNormal,
+                                   string parentName, Vector3 pos, Vector3 rot, GameObject __result)
+        {
+
+            if (!IniConfig.DetailedSubPartLogging)
+                return;
+            // Print out the arguments
+            Common.Log($"createObjectPartObject called with arguments: ");
+            Common.Log($"obp: {obp}");
+            Common.Log($"objectIniFolder: {objectIniFolder}");
+            Common.Log($"subModelName: {subModelName}");
+            Common.Log($"isVisible: {isVisible}");
+            Common.Log($"castShadows: {castShadows}");
+            Common.Log($"hideWithActiveDamageModel: {hideWithActiveDamageModel}");
+            Common.Log($"alternativeMeshResourcesFolder: {alternativeMeshResourcesFolder}");
+            Common.Log($"alternativeMaterialResourcesFolder: {alternativeMaterialResourcesFolder}");
+            Common.Log($"rootMeshName: {rootMeshName}");
+            Common.Log($"meshName: {meshName}");
+            Common.Log($"matName: {matName}");
+            Common.Log($"materialTextureDiffuse: {materialTextureDiffuse}");
+            Common.Log($"materialTextureSpecular: {materialTextureSpecular}");
+            Common.Log($"materialTextureNormal: {materialTextureNormal}");
+            Common.Log($"parentName: {parentName}");
+            Common.Log($"pos: {pos}");
+            Common.Log($"rot: {rot}");
+
+            // Print the name of the returned GameObject (if it's not null)
+            if (__result != null)
+            {
+                Common.Log($"Returned GameObject: {__result.name}");
+                Common.LogTransform(__result.transform);
+                Common.Log($"obp root");
+                Common.LogTransform(obp._rootGameObject.transform);
+                
+            }
+            else
+            {
+                Common.Log("Returned GameObject is null.");
+            }
+        }
+    }
+
+
 
     public class ResourcePath
     {
