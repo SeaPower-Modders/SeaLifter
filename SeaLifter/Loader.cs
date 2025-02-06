@@ -9,6 +9,7 @@ using System.Drawing.Imaging;
 using System.Security.Cryptography;
 using UnityEngine;
 using static Noesis.Shader;
+using static System.Net.Mime.MediaTypeNames;
 using Application = UnityEngine.Application;
 using Color = UnityEngine.Color;
 using Graphics = UnityEngine.Graphics;
@@ -150,7 +151,7 @@ namespace Loader
             if (Exists)
                 return false;
             if (!FullPath.Contains(ext))
-            return false;
+                return false;
             EnsureCreated();
             this.Log($"Safe to write to {Extension}");
             return true;
@@ -252,7 +253,7 @@ namespace Loader
 
     [ACPlugin("sp.sl.lib.chainloader.product", "Chainloader", "0.0.0.9")]
     public class Plugin2 : MonoBehaviour, IAnchorChainMod
-        {
+    {
         public static string HarmonyName => "sp.sl.lib.harmony.product";
 
         void IAnchorChainMod.TriggerEntryPoint()
@@ -284,41 +285,64 @@ namespace Loader
         public static bool LogInternalResources = false;
         public static bool MeshDebugMode    = true;
         public static bool CodeDebugMode = false;
+        public static bool DetailedSubPartLogging = false;
+        public static bool SkipMusic = true;
 
 
-
-        public static IniHandler IniHandler;
+        public static IniHandler? Instance ;
         public static void Load()
         {
+            /*
             ResourcePath setpath = new ResourcePath("sealifter.ini", ConfigFolder) ;
             setpath.EnsureCreated();
 
-            IniHandler = Utils.openIniFile(setpath.FullPath, true, false);
+            Instance = ;
 
-            
+
+            MeshDebugMode = false;
             DefaultFolder        = LoadSaveString("General", "DefaultFolder", DefaultFolder);
             LogInternalResources = LoadSaveBool("General", "LogInternalResourceLoading", LogInternalResources);
+            SkipMusic            = LoadSaveBool("General", "SkipMusic", SkipMusic);
+            DetailedSubPartLogging = LoadSaveBool("General", "DetailedSubPartLogging", DetailedSubPartLogging);
             DumpFolder           = LoadSaveString("TextureExtractor", "Folder", DumpFolder);
             DumpTextures         = LoadSaveBool("TextureExtractor", "Active" , DumpTextures);
             DumpTexturesOpaque   = LoadSaveBool("TextureExtractor", "Opaque", DumpTexturesOpaque);
             MeshDebugMode        = LoadSaveBool("Meshes", "DebugMode", MeshDebugMode);
             CodeDebugMode        = LoadSaveBool("Scripts", "DebugMode", CodeDebugMode);
+            
+            //stop preloadObjects
+            //stop LoadMusicData
+
+            Instance.saveFile(true);
+            */
+            if(true)
+                ConfigFolder = "sealifter";
+                DefaultFolder = "user";
+                DumpFolder = "texturedump";
+                DumpTextures = false;
+                DumpTexturesOpaque = false;
+                LogInternalResources = false;
+                MeshDebugMode = false;
+                CodeDebugMode = false;
+                DetailedSubPartLogging = false;
+                SkipMusic = false;
 
 
-            IniHandler.saveFile(true);
 
-        }
-        public static bool LoadSaveBool(string sectionName, string key, bool defaultValue)
+        //LogInternalResources = true;
+        //DetailedSubPartLogging = true;
+    }
+    public static bool LoadSaveBool(string sectionName, string key, bool defaultValue)
         {
-            bool configval = IniHandler.readValue(sectionName, key, defaultValue);
-            IniHandler.writeValue(sectionName, key, configval);
+            bool configval = Instance.readValue(sectionName, key, defaultValue);
+            Instance.writeValue(sectionName, key, configval);
             Common.Log($"Config {sectionName} {key} {configval}");
             return configval;
         }
         public static string LoadSaveString(string sectionName, string key, string defaultValue)
         {
-            string configval = IniHandler.readValue(sectionName, key, defaultValue);
-            IniHandler.writeValue(sectionName, key, configval);
+            string configval = Instance.readValue(sectionName, key, defaultValue);
+            Instance.writeValue(sectionName, key, configval);
             Common.Log($"Config {sectionName} {key} {configval}");
             return configval;
         }
@@ -531,6 +555,103 @@ namespace Loader
 
     }
 
+    public class LoadedTexture
+    {
+        public ResourcePath ResourcePath;
+        public string hash = "";
+        public Texture2D texture = new Texture2D(2, 2);
+        private DateTime lastCheckedTime = DateTime.MinValue;
+
+        byte[] FileBytes;
+
+        public LoadedTexture(ResourcePath resourcePath)
+        {
+            ResourcePath = resourcePath;
+        }
+
+        public Texture2D LoadImage(bool deep = true)
+        {
+
+            if (!File.Exists(ResourcePath.FullPath))
+            {
+                ResourcePath.Log($"Failed to find image");
+                return null;
+            }
+            DateTime currentWriteTime = File.GetLastWriteTime(ResourcePath.FullPath);
+
+            if (currentWriteTime == lastCheckedTime && deep == false)
+            {
+                return texture;
+
+
+            }
+
+            FileBytes = File.ReadAllBytes(ResourcePath.FullPath);
+
+            string fileHash = GetFileHash();
+            if (hash == fileHash)
+            {
+                ResourcePath.Log($"Texture found in cache with hash {fileHash}");
+                return texture; // Return the cached texture
+            }
+            hash = fileHash;
+            lastCheckedTime = currentWriteTime;
+
+            if (ResourcePath.Extension == ".tga")
+            {
+                ResourcePath.Log($"loading tga image");
+
+                texture = TGALoader.Load(ResourcePath.FullPath);
+
+            }
+            else if (!texture.LoadImage(FileBytes))
+            {
+                ResourcePath.Log($"bad/Missing image File");
+                return null;
+            }
+            texture.Apply();
+            ResourcePath.Log($"TextureFormat: {texture.format} Texture Size: {texture.texelSize} Filter Mode: {texture.filterMode}");
+            return texture;
+        }
+
+        private string GetFileHash()
+        {
+            using (var md5 = MD5.Create())
+            {
+                byte[] hashBytes = md5.ComputeHash(FileBytes);
+                return Convert.ToBase64String(hashBytes).ToLowerInvariant();
+            }
+        }
+    }
+
+    public class HotLoader : MonoBehaviour
+    {
+        private static int currentIndex = 0;
+        Queue<string> strings = new Queue<string>();
+
+        public void FixedUpdate()
+        {
+            if (strings.Count == 0)
+            {
+                strings = new Queue<string>(Templates.textureCache.Keys);
+
+            }
+            // Only load one image per FixedUpdate
+            if (strings.Count > 0)
+            {
+                Templates.textureCache[strings.Dequeue()].LoadImage(false);
+            }
+            currentIndex++;
+
+            if (currentIndex >= Templates.textureCache.Count)
+            {
+                currentIndex = 0;
+            }
+        }
+
+
+    }
+
     public static class Templates
     {
         public static GameObject LoadObj(this ResourcePath resourcePath)
@@ -550,66 +671,30 @@ namespace Loader
                 resourcePath.Log($"mesh is named {mesh.gameObject.name}");
             return obj;
         }
-        private static Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
+        public static Dictionary<string, LoadedTexture> textureCache = new Dictionary<string, LoadedTexture>();
 
+        public static GameObject hotloader;
+
+            
         public static Texture2D LoadImage(this ResourcePath resourcePath)
         {
-
-            if (!File.Exists(resourcePath.FullPath))
+            if (hotloader == null)
             {
-                resourcePath.Log($"Failed to find image");
-                return null;
-            }
-            
+                hotloader = new GameObject("hotloader");
+                hotloader.AddComponent<HotLoader>();
 
-            resourcePath.Log($"loading image file");
-
-
-            byte[] fileBytes = File.ReadAllBytes(resourcePath.FullPath);
-
-            string fileHash = GetFileHash(fileBytes);
-            if (textureCache.ContainsKey(fileHash))
-            {
-                resourcePath.Log($"Texture found in cache with hash {fileHash}");
-                return textureCache[fileHash]; // Return the cached texture
             }
 
-            Texture2D tex;
-            if (resourcePath.Extension == ".tga")
+            if (!textureCache.TryGetValue(resourcePath.FullPath, out LoadedTexture loadedTexture))
             {
-                resourcePath.Log($"loading tga image");
-
-                tex = TGALoader.Load(resourcePath.FullPath);
-
+                textureCache[resourcePath.FullPath] = new(resourcePath);
+                return textureCache[resourcePath.FullPath].LoadImage();
             }
-            else
-            {
-                tex = new Texture2D(2, 2);
-    
-                if (!tex.LoadImage( fileBytes))
-                {
-                    Common.Error($"{resourcePath} bad/Missing image File");
-                    return null;
-                }
-            }
-            
 
 
-
-            resourcePath.Log($"TextureFormat: {tex.format} Texture Size: {tex.texelSize} Filter Mode: {tex.filterMode}");
-            textureCache[fileHash] = tex;
-
-            tex.Apply();
-            return tex;
+            return loadedTexture.LoadImage();
         }
-        private static string GetFileHash(byte[] fileBytes)
-        {
-            using (var md5 = MD5.Create())
-            {
-                byte[] hashBytes = md5.ComputeHash(fileBytes);
-                return Convert.ToBase64String(hashBytes).ToLowerInvariant();
-            }
-        }
+
 
         public static Material LoadMatIni(this ResourcePath resourcePath)
         {
@@ -636,7 +721,7 @@ namespace Loader
 
                 }
 
-                }
+            }
 
 
             string folder = iniHandler.readValue("Textures", "ResourcesFolder", "textures/");
@@ -648,9 +733,9 @@ namespace Loader
                     settingname = propertyname;
                 if (!handler.doesKeyExist("Textures", settingname)) return;
                 string texturepath = handler.readValue("Textures", settingname, "");
-
+                
                 resourcePath.Log($"loading {settingname} from: {texturepath}");
-
+                
                 texturepath = folder + texturepath;
                 Texture tex = Singleton<ResourceLoader>.Instance.getTextureResource(texturepath);
                 if (tex != null)
@@ -713,7 +798,7 @@ namespace Loader
             foreach (string property in new[] { "_Color", "_EmissionColor", "_GlowColor", "_SpecColor" })
             {
                 SetColorFromIni(iniHandler, mat, property);
-
+                
             }
 
 
@@ -799,7 +884,7 @@ namespace Loader
             if(basetex != null)
             {
                 resourcePath.Log($"creating template using existing textures");
-            resourcePath.SaveProtextedTexture(basetex, dump: false);//Logged
+                resourcePath.SaveProtextedTexture(basetex, dump: false);//Logged
 
             }
 
@@ -829,7 +914,7 @@ namespace Loader
                 {
                     resourcePath.Log($"saving png");
 
-                bmp.Save(resourcePath.FullPath, ImageFormat.Png);
+                    bmp.Save(resourcePath.FullPath, ImageFormat.Png);
 
                 }
             }
