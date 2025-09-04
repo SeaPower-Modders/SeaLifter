@@ -51,11 +51,11 @@ namespace Loader
         public static void Prefix(string DEMKey)
         {
             Debug.LogError($"loading terrain file {DEMKey}");
-            Dictionary<string, CompressedDEMChunk> _compressedDEMChunkDictionary = Val.GetStatic<Dictionary<string, CompressedDEMChunk>>(typeof(TerrainLoader), "_compressedDEMChunkDictionary");
+            Dictionary<string, CompressedDEMChunk> _compressedDEMChunkDictionary = Common.GetStatic<Dictionary<string, CompressedDEMChunk>>(typeof(TerrainLoader), "_compressedDEMChunkDictionary");
             Debug.LogError($"loading terrain file {DEMKey} {_compressedDEMChunkDictionary.Count()}");
             if(_compressedDEMChunkDictionary.Count() > 0 ) 
                 _compressedDEMChunkDictionary[DEMKey] = _compressedDEMChunkDictionary.Values.FirstOrDefault();
-            Val.SetStatic(typeof(TerrainLoader), "_compressedDEMChunkDictionary", _compressedDEMChunkDictionary);
+            Common.SetStatic(typeof(TerrainLoader), "_compressedDEMChunkDictionary", _compressedDEMChunkDictionary);
         }
     }
 
@@ -66,11 +66,11 @@ namespace Loader
         public static void Prefix(string DEMKey)
         {
             Debug.LogError($"loading terrain {DEMKey}");
-            Dictionary<string, UncompressedDEMChunk> _uncompressedDEMChunkDictionary = Val.GetStatic<Dictionary<string, UncompressedDEMChunk>>(typeof(TerrainLoader), "_uncompressedDEMChunkDictionary");
+            Dictionary<string, UncompressedDEMChunk> _uncompressedDEMChunkDictionary = Common.GetStatic<Dictionary<string, UncompressedDEMChunk>>(typeof(TerrainLoader), "_uncompressedDEMChunkDictionary");
             Debug.LogError($"loading terrain {DEMKey} {_uncompressedDEMChunkDictionary.Count()}");
             if (_uncompressedDEMChunkDictionary.Count() > 0)
                 _uncompressedDEMChunkDictionary[DEMKey] = _uncompressedDEMChunkDictionary.Values.FirstOrDefault();
-            Val.SetStatic(typeof(TerrainLoader), "_uncompressedDEMChunkDictionary", _uncompressedDEMChunkDictionary);
+            Common.SetStatic(typeof(TerrainLoader), "_uncompressedDEMChunkDictionary", _uncompressedDEMChunkDictionary);
         }
     }
 }

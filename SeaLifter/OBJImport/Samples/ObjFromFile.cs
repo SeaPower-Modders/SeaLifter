@@ -6,7 +6,7 @@ public class ObjFromFile : MonoBehaviour
 {
     string objPath = string.Empty;
     string error = string.Empty;
-    GameObject loadedObject;
+    GameObject? loadedObject;
 
     void OnGUI() {
         /*
