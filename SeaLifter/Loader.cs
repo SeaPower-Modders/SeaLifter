@@ -4,12 +4,12 @@ using HarmonyLib;
 
 using SeaPower;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Security.Cryptography;
 using UnityEngine;
-using static Noesis.Shader;
-using static System.Net.Mime.MediaTypeNames;
 using Application = UnityEngine.Application;
 using Color = UnityEngine.Color;
 using Graphics = UnityEngine.Graphics;
@@ -90,6 +90,8 @@ namespace Loader
         
         public string FileName => Path.GetFileNameWithoutExtension(FullPath);
 
+
+
         public ResourcePath(string rawpath, string folder = "user", bool internalresouce = false, ResourcePath parent = null)
         {
             //Error($"{rawpath} {folder} {internalresouce}");
@@ -111,13 +113,23 @@ namespace Loader
                 _prefab = Path.GetFileNameWithoutExtension(rawpath);
             }
 
-            foreach (var dir in FileManager.Instance.Directories.ToList().ConvertAll(dir => dir.DirectoryInfo))
+
+            foreach (var dir in TempUtils.GetLocalDirs())
             {
-                string possiblepath = Path.Combine(dir.FullName, _rawpath);
-                //Log($"Testing from: {dir.FullName} {dir.Name}");
-                if (!File.Exists(possiblepath))//TODO log collisions
+
+                string? possiblepath = CheckDirectory(dir);
+                if (possiblepath is null)
                     continue;
-                Log($"Loading from: {dir.Name}");
+                _fullpath = possiblepath;
+
+                return;
+            }
+
+            foreach (var dir in TempUtils.GetWorkshopDirs())
+            {
+                string? possiblepath = CheckDirectory(dir);
+                if (possiblepath is null)
+                    continue;
                 _fullpath = possiblepath;
 
                 return;
@@ -126,6 +138,18 @@ namespace Loader
 
         }
 
+        public string? CheckDirectory(SearchDirectory directory)
+        {
+            DirectoryInfo info = directory.DirectoryInfo;
+            string possiblepath = Path.Combine(info.FullName, _rawpath);
+            //Log($"Testing from: {dir.FullName} {dir.Name}");
+            if (!File.Exists(possiblepath))//TODO log collisions
+                return null;
+            if (!directory.IsEnabled)
+                Error("Loading from disabled directory");
+            Log($"Loading from {(directory.IsSteam ? "Workshop" : "Local")}: {info.Name}");
+            return possiblepath;
+        }
         
 
         //public static implicit operator string(ResourcePath customString) => customString.ToString();
@@ -521,7 +545,7 @@ namespace Loader
 
     [HarmonyPatch(typeof(ResourceLoader), nameof(ResourceLoader.getGameObjectResource))]
     public class ResourceLoadergetGameObjectResource : MonoBehaviour
-    {
+    { 
 
         public static void Postfix(ref GameObject __result, string resourceName)
         {
@@ -667,6 +691,7 @@ namespace Loader
             Common.LogGameObject(obj, resourcePath.FullPath + ".log");
 
             resourcePath.Log($"root gameobject {obj.name}");
+            //TODO hide this behind a flag
             foreach(var mesh in obj.gameObject.GetComponentsInChildren<MeshRenderer>())
                 resourcePath.Log($"mesh is named {mesh.gameObject.name}");
             return obj;
@@ -700,7 +725,7 @@ namespace Loader
         {
             resourcePath.Log($"Loading as ini");
 
-            IniHandler iniHandler = Utils.openIniFile(resourcePath.FullPath, true, false);
+            IniHandler iniHandler = SeaPower.Utils.openIniFile(resourcePath.FullPath, true, false);
             //Common.Log($"{path} Has BaseMaterial");
             string basefolder = iniHandler.readValue("BaseMaterial", "ResourcesFolder", "weapons/usn_mk-82/");
             string basemat = iniHandler.readValue("BaseMaterial", "ResourcesMaterial", "usn_mk-82_mat");

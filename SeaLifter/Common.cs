@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using SeaPower;
+using System.Reflection;
 using UnityEngine;
 
 class Val
@@ -79,8 +80,30 @@ class Val
 
 }
 
-public static class CommonNonStatic
+
+
+public static class TempUtils
 {
+    public static IEnumerable<SearchDirectory> GetEnabledDirs()
+    {
+        return FileManager.Instance.Directories.Where(dir => dir.IsEnabled);
+    }
+
+    public static IEnumerable<SearchDirectory> GetLocalDirs()
+    {
+        return GetEnabledDirs().Where(dir => !dir.IsSteam);
+    }
+
+    public static IEnumerable<SearchDirectory> GetWorkshopDirs()
+    {
+        return GetEnabledDirs().Where(dir => dir.IsSteam);
+    }
+
+    public static IEnumerable<DirectoryInfo> GetAllDirs()
+    {
+        return GetEnabledDirs().Select(dir => dir.DirectoryInfo);
+    }
+
     public static void Resize<T>(this List<T> list, int size, T element = default(T))
     {
         int count = list.Count;
